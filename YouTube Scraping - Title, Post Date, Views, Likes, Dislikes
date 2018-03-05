@@ -1,0 +1,71 @@
+from urllib.request import urlopen
+import datetime
+import csv
+import time
+import re
+
+video_ids = ['OkyrIRyrRdY', 'JHhV9TPNmTI']
+
+unsuccessful =[]
+
+i = 0
+while i < len(video_ids):
+    try:
+        full_urls = 'https://www.youtube.com/watch?v='+video_ids[i].strip('\n')
+        htmlfile = urlopen(full_urls)
+        
+        #This should be used if all videos are not being scraped and written into the CSV file
+        #time.sleep(3)
+        
+        htmltext = htmlfile.read()
+        html_text =htmltext.decode("utf-8")
+        
+        #Scraping the Post Date
+        postdate_index = html_text.index('>Published on') + 14
+        postdate_index_end = postdate_index + 12
+        postdate = (html_text[postdate_index:postdate_index_end]).strip('\n')
+        postdate = postdate.replace('<','')
+        
+        #Scraping the Title
+        title_index = html_text.index('<title>') + 7
+        title_index_end = html_text.index(' - YouTube')
+        title = (html_text[title_index:title_index_end]).strip('\n')
+        
+        #Scraping the Views
+        view_index = html_text.index('view_count":')
+        view_index_end = view_index + 25
+        view_count = (html_text[view_index:view_index_end])
+        view_count_start = view_count.index(':') + 1
+        view_count_end = view_count.index(',')
+        ViewCount= view_count[view_count_start:view_count_end]
+        
+        if ViewCount.startswith('"') and ViewCount.endswith('"'):
+            ViewCount = ViewCount[1:-1]
+        ViewCount = ViewCount.replace(',','')
+        ViewCount = ViewCount.replace('"','')
+        ViewCount = ViewCount.replace('}','')
+        
+        #Scraping the Likes and Dislikes
+        likes = re.findall(r'like this video along with(.*?)other people',html_text)[1].strip()
+        likes = likes.replace(',','')
+        dislikes = re.findall(r'like this video along with(.*?)other people',html_text)[-1].strip()
+        dislikes = dislikes.replace(',','')
+        
+        #Timestamp of scraping
+        current_time = str(datetime.datetime.now())
+       
+        link = video_ids[i].strip('\n')
+        table_row = title+'\t'+ postdate+'\t' +current_time+'\t' +ViewCount + '\t' + likes + '\t' + dislikes  + '\n'
+        table_row = table_row.strip('\n')
+        print(table_row)
+         
+        with open("views.csv", "a+", newline ='') as out_file:
+            f = csv.writer(out_file)
+            f.writerow([str(title),str(postdate),str(current_time),str(ViewCount),str(likes),str(dislikes)])
+                
+        i +=1
+        
+    except:
+        unsuccessful.append('https://www.youtube.com/watch?v='+video_ids[i].strip('\n') + '\t' + str(i))
+        print(video_ids[i])
+        i +=1
